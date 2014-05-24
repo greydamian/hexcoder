@@ -2,3 +2,4 @@ hexcoder
 ========
 
 Hexadecimal codec utility.
+
