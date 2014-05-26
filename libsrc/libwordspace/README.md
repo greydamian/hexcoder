@@ -1,0 +1,5 @@
+libwordspace
+============
+
+Wordspace exploration library.
+
