@@ -1,4 +1,11 @@
 /*
+ * Copyright (c) 2014 Damian Jason Lapidge
+ *
+ * The contents of this file are subject to the terms and conditions defined 
+ * within the file LICENSE.txt, located within this project's root directory.
+ */
+
+/*
  * stdio.h : stderr, fprintf() 
  * stddef.h: size_t, ssize_t
  * unistd.h: STDIN_FILENO, STDOUT_FILENO, read(), write(), close()
@@ -10,13 +17,14 @@
 #include <stdlib.h>
 
 /*
- * ctype.h: toupper()
+ * string.h: memcpy(), strchr()
+ * ctype.h : toupper()
  */
 #include <string.h>
 #include <ctype.h>
 
 /*
- * wordspace.h: 
+ * wordspace.h: getword(), getindex()
  * greyio.h   : writeall()
  */
 #include <wordspace.h>
@@ -65,11 +73,11 @@ int parse_args(struct cmdopts *opts, int argc, char *argv[]) {
             case ':':
                 /* missing argument */
                 fprintf(stderr, "error: '-%c' option requires argument\n", optopt);
-                return -1;
+                return -1; /* failure */
             case '?':
                 /* unknown option */
                 fprintf(stderr, "error: '-%c' option unknown\n", optopt);
-                return -1;
+                return -1; /* failure */
             default:
                 /* should never reach here */
                 return -1;
@@ -84,7 +92,7 @@ int parse_args(struct cmdopts *opts, int argc, char *argv[]) {
  * Read only hexadecimal characters.
  */
 ssize_t readhex(int fd, void *buf, size_t count) {
-    int rtotal = 0, rbytes = 1;
+    int rtotal = 0, rbytes = 0;
 
     char c;
     while (rtotal < count) {
@@ -132,8 +140,22 @@ ssize_t encode(char **dst, const void *src, size_t n) {
 }
 
 /* hex -> bin */
-ssize_t decode(char **dst, const void *src, size_t n) {
-    return 0;
+ssize_t decode(void **dst, const char *src, size_t n) {
+    void *tmpdst = realloc(*dst, n / 2);
+    if (tmpdst == NULL)
+        return -1; /* failure */
+    *dst = tmpdst;
+
+    char *char_dst = (char *)*dst;
+
+    strupper((char *)src, n);
+
+    int i = 0;
+    for (i = 0; i + 1 < n; i += 2) {
+        /* TODO */
+    }
+
+    return n / 2;
 }
 
 int main(int argc, char *argv[]) {
@@ -152,7 +174,8 @@ int main(int argc, char *argv[]) {
     int ifile = STDIN_FILENO;  /* input file descriptor */
     int ofile = STDOUT_FILENO; /* output file descriptor */
 
-    char *ibuf = malloc(BUFSIZE);
+    /* ibuf is twice size to store encode output for beautify input */
+    char *ibuf = malloc(BUFSIZE * 2);
     char *obuf = NULL;
 
     if (ibuf == NULL) {
@@ -162,27 +185,30 @@ int main(int argc, char *argv[]) {
 
     int nbytes = 0, rbytes = 0, wbytes = 0;
 
-    rbytes = read(ifile, ibuf, BUFSIZE);
+    rbytes = read_func(ifile, ibuf, BUFSIZE);
     while (rbytes > 0) {
         switch(opts.mode) {
             case ENCODE:
                 nbytes = encode(&obuf, ibuf, rbytes);
                 break;
             case DECODE:
-                printf("do decode\n");
+                nbytes = decode((void **)&obuf, ibuf, rbytes);
                 break;
             case BEAUTIFY:
                 printf("do beautify\n");
                 break;
             default:
+                /* should never reach here */
                 break;
         }
+        if (nbytes < 0)
+            break; /* encode/decode/beautify failure */
 
         wbytes = writeall(ofile, obuf, nbytes);
         if (wbytes < 0)
             break;
 
-        rbytes = read(ifile, ibuf, BUFSIZE);
+        rbytes = read_func(ifile, ibuf, BUFSIZE);
     }
 
     free(ibuf);
