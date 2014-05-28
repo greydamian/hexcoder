@@ -6,15 +6,16 @@
  */
 
 /*
- * stdio.h : stderr, fprintf() 
- * stddef.h: size_t, ssize_t
- * unistd.h: STDIN_FILENO, STDOUT_FILENO, read(), write(), close()
+ * stdio.h : stderr, fprintf()
  * stdlib.h: EXIT_SUCCESS, EXIT_FAILURE, exit(), malloc(), realloc(), free()
+ * stddef.h: size_t, ssize_t
+ * unistd.h: STDIN_FILENO, STDOUT_FILENO, optopt, read(), write(), close(), 
+ *           getopt()
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <stddef.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 /*
  * string.h: memcpy(), strchr()
@@ -46,7 +47,7 @@ struct cmdopts {
 };
 
 void print_usage() {
-    fprintf(stderr, "usage: hexcoder <-e | -d | -b>\n");
+    fprintf(stderr, "usage: hexcoder [-e] [-d] [-b]\n");
 }
 
 int parse_args(struct cmdopts *opts, int argc, char *argv[]) {
@@ -72,11 +73,9 @@ int parse_args(struct cmdopts *opts, int argc, char *argv[]) {
                 break;
             case ':':
                 /* missing argument */
-                fprintf(stderr, "error: '-%c' option requires argument\n", optopt);
                 return -1; /* failure */
             case '?':
                 /* unknown option */
-                fprintf(stderr, "error: '-%c' option unknown\n", optopt);
                 return -1; /* failure */
             default:
                 /* should never reach here */
@@ -118,13 +117,50 @@ void strupper(char *s, size_t n) {
         s[i] = toupper(s[i]);
 }
 
+/*
+ * Compute length of buffer once beautified.
+ */
+size_t beautified_len(size_t n) {
+    size_t bytes     = (n - 1) / 2 + 1;
+    size_t quadbytes = (bytes - 1) / 4 + 1;
+    size_t lines     = (quadbytes - 1) / 4 + 1;
+
+    return bytes * 3 + quadbytes - lines;
+}
+
 /* hex -> hex */
-ssize_t beautify(char **dst, const char *src, size_t n) {
-    return 0;
+ssize_t beautify(char **dst, char *src, size_t n) {
+    size_t dst_len = beautified_len(n);
+
+    char *tmpdst = realloc(*dst, dst_len);
+    if (tmpdst == NULL)
+        return -1; /* failure */
+    *dst = tmpdst;
+
+    int i = 0, j = 0;
+    for (i = 0, j = 0; i < n; i++, j++) {
+        (*dst)[j] = src[i];
+
+        if ((i + 1) % 2 == 0) {
+            j++;
+            (*dst)[j] = ' '; /* append space */
+        }
+
+        if ((i + 1) % 32 == 0) {
+            (*dst)[j] = '\n'; /* replace space with newline */
+        }
+        else if ((i + 1) % 8 == 0) {
+            j++;
+            (*dst)[j] = ' '; /* append second space */
+        }
+    }
+    (*dst)[dst_len - 1] = '\n';
+
+    return dst_len;
 }
 
 /* bin -> hex */
-ssize_t encode(char **dst, const void *src, size_t n) {
+ssize_t encode(char **dst, void *src, size_t n) {
     char *tmpdst = realloc(*dst, n * 2);
     if (tmpdst == NULL)
         return -1; /* failure */
@@ -133,27 +169,27 @@ ssize_t encode(char **dst, const void *src, size_t n) {
     char *char_src = (char *)src;
 
     int i = 0;
-    for (i = 0; i < n; i++)
-        getword(char_src[i], *dst + i * 2, HEXCHARS_UPPER, 2);
+    for (i = 0; i < n; i++) {
+        getword(char_src[i] & 0xff, *dst + i * 2, HEXCHARS_UPPER, 2);
+    }
 
     return n * 2;
 }
 
 /* hex -> bin */
-ssize_t decode(void **dst, const char *src, size_t n) {
+ssize_t decode(void **dst, char *src, size_t n) {
     void *tmpdst = realloc(*dst, n / 2);
     if (tmpdst == NULL)
         return -1; /* failure */
     *dst = tmpdst;
 
+    strupper(src, n);
+
     char *char_dst = (char *)*dst;
 
-    strupper((char *)src, n);
-
     int i = 0;
-    for (i = 0; i + 1 < n; i += 2) {
-        /* TODO */
-    }
+    for (i = 0; i < n / 2; i++)
+        char_dst[i] = (char)getindex(src + i * 2, HEXCHARS_UPPER, 2);
 
     return n / 2;
 }
@@ -161,6 +197,7 @@ ssize_t decode(void **dst, const char *src, size_t n) {
 int main(int argc, char *argv[]) {
     struct cmdopts opts;
     if (parse_args(&opts, argc, argv) != 0) {
+        print_usage();
         exit(EXIT_FAILURE);
     }
 
@@ -183,6 +220,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    int exit_status = EXIT_SUCCESS;
     int nbytes = 0, rbytes = 0, wbytes = 0;
 
     rbytes = read_func(ifile, ibuf, BUFSIZE);
@@ -190,25 +228,38 @@ int main(int argc, char *argv[]) {
         switch(opts.mode) {
             case ENCODE:
                 nbytes = encode(&obuf, ibuf, rbytes);
+                if (nbytes < 0)
+                    break; /* break on encode failure */
+                /* redirect encode output into beautify input */
+                memcpy(ibuf, obuf, nbytes);
+                rbytes = nbytes;
+            case BEAUTIFY:
+                nbytes = beautify(&obuf, ibuf, rbytes);
                 break;
             case DECODE:
                 nbytes = decode((void **)&obuf, ibuf, rbytes);
                 break;
-            case BEAUTIFY:
-                printf("do beautify\n");
-                break;
             default:
                 /* should never reach here */
+                exit_status = EXIT_FAILURE;
                 break;
         }
-        if (nbytes < 0)
-            break; /* encode/decode/beautify failure */
+        if (nbytes < 0) {
+            /* encode/decode/beautify failure */
+            exit_status = EXIT_FAILURE;
+            break;
+        }
 
         wbytes = writeall(ofile, obuf, nbytes);
-        if (wbytes < 0)
+        if (wbytes < 0) {
+            exit_status = EXIT_FAILURE;
             break;
+        }
 
         rbytes = read_func(ifile, ibuf, BUFSIZE);
+    }
+    if (rbytes < 0) {
+        exit_status = EXIT_FAILURE;
     }
 
     free(ibuf);
@@ -217,6 +268,6 @@ int main(int argc, char *argv[]) {
     close(ifile);
     close(ofile);
 
-    exit(EXIT_SUCCESS);
+    exit(exit_status);
 }
 
