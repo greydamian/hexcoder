@@ -31,7 +31,7 @@
 #include <wordspace.h>
 #include <greyio.h>
 
-#define BUFSIZE 32 /* must be mulitple of 32, so beautify() works correctly */
+#define BUFSIZE 32 /* must be mulitple of 32, so beautify works correctly */
 
 const char *HEXCHARS_MIXED = "0123456789ABCDEFabcdef";
 const char *HEXCHARS_UPPER = "0123456789ABCDEF";
@@ -169,9 +169,8 @@ ssize_t encode(char **dst, void *src, size_t n) {
     char *char_src = (char *)src;
 
     int i = 0;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < n; i++)
         getword(char_src[i] & 0xff, *dst + i * 2, HEXCHARS_UPPER, 2);
-    }
 
     return n * 2;
 }
