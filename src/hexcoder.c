@@ -154,9 +154,12 @@ ssize_t beautify(char **dst, char *src, size_t n) {
             (*dst)[j] = ' '; /* append second space */
         }
     }
-    (*dst)[dst_len - 1] = '\n';
+    if ((*dst)[j - 1] != '\n') {
+        (*dst)[j] = '\n';
+        j++;
+    }
 
-    return dst_len;
+    return j;
 }
 
 /* bin -> hex */
