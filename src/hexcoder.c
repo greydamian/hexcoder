@@ -109,7 +109,7 @@ ssize_t readhex(int fd, void *buf, size_t count) {
 }
 
 /*
- * Convert a string to uppercase (in place).
+ * Convert a string (in place) to uppercase.
  */
 void strupper(char *s, size_t n) {
     int i = 0;
@@ -118,7 +118,7 @@ void strupper(char *s, size_t n) {
 }
 
 /*
- * Compute length of buffer once beautified.
+ * Compute maximum length of buffer once beautified.
  */
 size_t beautified_len(size_t n) {
     size_t bytes     = (n - 1) / 2 + 1;
@@ -243,7 +243,6 @@ int main(int argc, char *argv[]) {
                 break;
             default:
                 /* should never reach here */
-                exit_status = EXIT_FAILURE;
                 break;
         }
         if (nbytes < 0) {
