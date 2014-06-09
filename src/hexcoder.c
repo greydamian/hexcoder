@@ -93,14 +93,17 @@ int parse_args(struct cmdopts *opts, int argc, char *argv[]) {
 ssize_t readhex(int fd, void *buf, size_t count) {
     int rtotal = 0, rbytes = 0;
 
-    char c;
+    char c = '\0';
     while (rtotal < count) {
         rbytes = read(fd, &c, 1);
         if (rbytes < 1)
             break;
+
+        if (strchr(HEXCHARS_MIXED, c) == NULL || c == '\0')
+            continue; /* ignore non-hex chars */
+
         memcpy(buf + rtotal, &c, 1);
-        if (strchr(HEXCHARS_MIXED, c) != NULL)
-            rtotal++;
+        rtotal++;
     }
     if (rbytes < 0)
         return rbytes; /* failure */
