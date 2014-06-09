@@ -130,9 +130,9 @@ size_t beautified_len(size_t n) {
 
 /* hex -> hex */
 ssize_t beautify(char **dst, char *src, size_t n) {
-    size_t dst_len = beautified_len(n);
+    size_t dstlen = beautified_len(n);
 
-    char *tmpdst = realloc(*dst, dst_len);
+    char *tmpdst = realloc(*dst, dstlen);
     if (tmpdst == NULL)
         return -1; /* failure */
     *dst = tmpdst;
@@ -141,22 +141,18 @@ ssize_t beautify(char **dst, char *src, size_t n) {
     for (i = 0, j = 0; i < n; i++, j++) {
         (*dst)[j] = src[i];
 
-        if ((i + 1) % 2 == 0) {
-            j++;
-            (*dst)[j] = ' '; /* append space */
+        if (i + 1 >= n) {
+            (*dst)[++j] = '\n'; /* append final newline */
+            continue;           /* skip any further formatting */
         }
 
-        if ((i + 1) % 32 == 0) {
-            (*dst)[j] = '\n'; /* replace space with newline */
-        }
-        else if ((i + 1) % 8 == 0) {
-            j++;
-            (*dst)[j] = ' '; /* append second space */
-        }
-    }
-    if ((*dst)[j - 1] != '\n') {
-        (*dst)[j] = '\n';
-        j++;
+        if ((i + 1) % 2 == 0)
+            (*dst)[++j] = ' '; /* append space */
+
+        if ((i + 1) % 32 == 0)
+            (*dst)[j] = '\n';  /* replace space with newline */
+        else if ((i + 1) % 8 == 0)
+            (*dst)[++j] = ' '; /* append second space */
     }
 
     return j;
