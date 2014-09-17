@@ -10,21 +10,20 @@ CC="cc";
 SRC="src/hexcoder.c";
 OUT="bin/hexcoder";
 
-LIBSRC="./libsrc";
-LIBDIR="./lib";
-
 CFLAGS="";
 IFLAGS="-I./include";
 LFLAGS="-L./lib";
 
 LIBS="-lwordspace -lgreyio";
 
+LIBSRC="./libsrc";
+LIBDIR="./lib";
+
 ROOTDIR="$(pwd)";
 
 # build each library
 mkdir -p $LIBDIR;
-for d in $(ls $LIBSRC);
-do
+for d in $(ls $LIBSRC); do
     cd $LIBSRC/$d;
     bash ./build.sh;
     cp ./lib/* $ROOTDIR/$LIBDIR;
