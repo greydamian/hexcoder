@@ -5,6 +5,8 @@
  * within the file LICENSE.txt, located within this project's root directory.
  */
 
+#include <greyio.h>
+
 /*
  * stdlib.h: realloc()
  * unistd.h: ssize_t, size_t, read(), write()
@@ -13,8 +15,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
-#include <greyio.h>
 
 #define BUFSIZE 1024
 

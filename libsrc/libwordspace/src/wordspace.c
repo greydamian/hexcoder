@@ -5,12 +5,12 @@
  * within the file LICENSE.txt, located within this project's root directory.
  */
 
+#include <wordspace.h>
+
 /*
  * string.h: strlen(), strchr()
  */
 #include <string.h>
-
-#include <wordspace.h>
 
 static const char *version = "v1.0.0";
 static const char *authors = "Damian Jason Lapidge <grey@greydamian.org>";
